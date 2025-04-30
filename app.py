@@ -1,11 +1,13 @@
 import os
 from flask import Flask, render_template, request, jsonify
 import requests
-from dotenv import load_dotenv
-
-load_dotenv()
+from werkzeug.utils import quote as url_quote  # استبدال الاستيراد المعطوب
 
 app = Flask(__name__)
+
+# تهيئة متغيرات البيئة
+from dotenv import load_dotenv
+load_dotenv()
 
 # Pexels API key from environment variables
 PEXELS_API_KEY = os.getenv('PEXELS_API_KEY')
@@ -17,7 +19,7 @@ def home():
 @app.route('/search', methods=['POST'])
 def search():
     try:
-        data = request.json
+        data = request.get_json()
         media_type = data.get('mediaType', 'photos')
         query = data.get('query', '').strip()
         page = data.get('page', 1)
@@ -25,11 +27,11 @@ def search():
         if not query:
             return jsonify({'error': 'Query is required'}), 400
         
-        # Build API URL based on media type
+        # Build API URL
         if media_type == 'photos':
-            api_url = f"https://api.pexels.com/v1/search?query={query}&per_page=12&page={page}"
+            api_url = f"https://api.pexels.com/v1/search?query={url_quote(query)}&per_page=12&page={page}"
         else:
-            api_url = f"https://api.pexels.com/videos/search?query={query}&per_page=6&page={page}"
+            api_url = f"https://api.pexels.com/videos/search?query={url_quote(query)}&per_page=6&page={page}"
         
         # Make request to Pexels API
         response = requests.get(api_url, headers={'Authorization': PEXELS_API_KEY})
