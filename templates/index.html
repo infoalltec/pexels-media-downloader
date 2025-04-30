@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أداة بحث Pexels</title>
+    <style>
+        #pexels-search-container {
+            font-family: Arial, sans-serif;
+            margin: 20px auto;
+            max-width: 800px;
+            text-align: center;
+        }
+        #pexels-search-container select, 
+        #pexels-search-container input {
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+            padding: 8px 12px;
+            margin: 5px;
+        }
+        #pexels-search-container input {
+            width: 60%;
+        }
+        #pexels-search-container button {
+            background-color: #2c3e50;
+            border-radius: 5px;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 8px 20px;
+        }
+        #pexels-results {
+            display: grid;
+            gap: 15px;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            margin: 20px auto;
+            max-width: 1200px;
+            padding: 0 15px;
+        }
+        .media-item {
+            border: 1px solid #eee;
+            border-radius: 5px;
+            overflow: hidden;
+            background: #fff;
+        }
+        .media-item img, 
+        .media-item video {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+        }
+        #loadMoreContainer {
+            display: none;
+            margin: 20px 0;
+            text-align: center;
+        }
+        #loadMoreButton {
+            background-color: #3498db;
+        }
+        .loading-message,
+        .error-message {
+            grid-column: 1/-1;
+            text-align: center;
+            padding: 20px;
+        }
+        .error-message {
+            color: #e74c3c;
+        }
+    </style>
+</head>
+<body>
+    <div id="pexels-search-container">
+        <select id="mediaType">
+            <option value="photos">صور</option>
+            <option value="videos">فيديوهات</option>
+        </select>
+        <input id="searchInput" placeholder="ابحث عن صور أو فيديوهات..." type="text">
+        <button id="searchButton">بحث</button>
+        
+        <div id="pexels-results"></div>
+        
+        <div id="loadMoreContainer">
+            <button id="loadMoreButton">تحميل المزيد</button>
+        </div>
+    </div>
+
+    <script>
+        const API_ENDPOINT = window.location.origin + '/search';
+        let currentPage = 1;
+        let currentQuery = "";
+        let currentType = "photos";
+        let isLoading = false;
+
+        // عناصر DOM
+        const searchButton = document.getElementById('searchButton');
+        const loadMoreButton = document.getElementById('loadMoreButton');
+        const resultsContainer = document.getElementById('pexels-results');
+        const loadMoreContainer = document.getElementById('loadMoreContainer');
+
+        // أحداث النقر
+        searchButton.addEventListener('click', startSearch);
+        loadMoreButton.addEventListener('click', loadMore);
+
+        // بدء البحث
+        async function startSearch() {
+            currentPage = 1;
+            currentQuery = document.getElementById('searchInput').value.trim();
+            currentType = document.getElementById('mediaType').value;
+            
+            if (!currentQuery) {
+                showMessage("الرجاء إدخال كلمة بحث", true);
+                return;
+            }
+            
+            showMessage("جاري البحث...", false);
+            loadMoreContainer.style.display = 'none';
+            await fetchResults();
+        }
+
+        // تحميل المزيد
+        async function loadMore() {
+            currentPage++;
+            await fetchResults();
+        }
+
+        // جلب النتائج من الخادم
+        async function fetchResults() {
+            if (isLoading) return;
+            isLoading = true;
+            
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        mediaType: currentType,
+                        query: currentQuery,
+                        page: currentPage
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    if (currentPage === 1) {
+                        resultsContainer.innerHTML = '';
+                    }
+                    
+                    if (data.results.length > 0) {
+                        displayResults(data.results);
+                        loadMoreContainer.style.display = data.has_more ? 'block' : 'none';
+                    } else if (currentPage === 1) {
+                        showMessage("لا توجد نتائج للبحث", false);
+                    }
+                } else {
+                    showMessage("حدث خطأ أثناء البحث: " + data.error, true);
+                }
+            } catch (error) {
+                showMessage("حدث خطأ في الاتصال بالخادم", true);
+            } finally {
+                isLoading = false;
+            }
+        }
+
+        // عرض النتائج
+        function displayResults(items) {
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'media-item';
+                
+                if (item.type === 'photo') {
+                    div.innerHTML = `
+                        <a href="${item.original}" target="_blank">
+                            <img src="${item.src}" alt="${item.alt}">
+                        </a>
+                    `;
+                } else {
+                    div.innerHTML = `
+                        <video controls>
+                            <source src="${item.src}" type="video/mp4">
+                        </video>
+                    `;
+                }
+                
+                resultsContainer.appendChild(div);
+            });
+        }
+
+        // عرض الرسائل
+        function showMessage(message, isError) {
+            resultsContainer.innerHTML = `
+                <div class="${isError ? 'error-message' : 'loading-message'}">
+                    ${message}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
