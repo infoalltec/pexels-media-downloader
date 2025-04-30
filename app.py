@@ -8,14 +8,6 @@ CORS(app)
 
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
-def translate_to_english(text):
-    try:
-        url = f"https://api.mymemory.translated.net/get?q={text}&langpair=ar|en"
-        res = requests.get(url).json()
-        return res.get("responseData", {}).get("translatedText", text)
-    except:
-        return text
-
 def search_pexels_with_type(media_type):
     query = request.args.get("query", "").strip()
     page = int(request.args.get("page", 1))
@@ -23,12 +15,13 @@ def search_pexels_with_type(media_type):
     if not query:
         return jsonify({"error": "Missing query"}), 400
 
-    translated_query = translate_to_english(query)
-    url = f"https://api.pexels.com/v1/{'videos/' if media_type == 'videos' else ''}search?query={translated_query}&per_page={5 if media_type == 'videos' else 10}&page={page}"
+    url = f"https://api.pexels.com/v1/{'videos/' if media_type == 'videos' else ''}search?query={query}&per_page={5 if media_type == 'videos' else 10}&page={page}"
     headers = {"Authorization": PEXELS_API_KEY}
+    
     res = requests.get(url, headers=headers)
-
+    
     if res.status_code != 200:
+        print(f"خطأ في الحصول على البيانات من Pexels: {res.status_code}")
         return jsonify({"error": "Failed to fetch from Pexels"}), 500
 
     return jsonify(res.json())
