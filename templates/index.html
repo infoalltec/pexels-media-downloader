@@ -1,90 +1,29 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html dir="rtl" lang="ar">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>أداة بحث Pexels</title>
     <style>
-        #pexels-search-container {
-            font-family: Arial, sans-serif;
-            margin: 20px auto;
-            max-width: 800px;
-            text-align: center;
-        }
-        #pexels-search-container select, 
-        #pexels-search-container input {
-            border-radius: 5px;
-            border: 1px solid #ddd;
-            font-size: 16px;
-            padding: 8px 12px;
-            margin: 5px;
-        }
-        #pexels-search-container input {
-            width: 60%;
-        }
-        #pexels-search-container button {
-            background-color: #2c3e50;
-            border-radius: 5px;
-            border: none;
-            color: white;
-            cursor: pointer;
-            font-size: 16px;
-            padding: 8px 20px;
-        }
-        #pexels-results {
-            display: grid;
-            gap: 15px;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            margin: 20px auto;
-            max-width: 1200px;
-            padding: 0 15px;
-        }
-        .media-item {
-            border: 1px solid #eee;
-            border-radius: 5px;
-            overflow: hidden;
-            background: #fff;
-        }
-        .media-item img, 
-        .media-item video {
-            width: 100%;
-            height: 180px;
-            object-fit: cover;
-        }
-        #loadMoreContainer {
-            display: none;
-            margin: 20px 0;
-            text-align: center;
-        }
-        #loadMoreButton {
-            background-color: #3498db;
-        }
-        .loading-message,
-        .error-message {
-            grid-column: 1/-1;
-            text-align: center;
-            padding: 20px;
-        }
-        .error-message {
-            color: #e74c3c;
-        }
+        body { font-family: Arial, sans-serif; }
+        #search-container { max-width: 800px; margin: 0 auto; }
+        #results { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+        .media-item { border: 1px solid #ddd; border-radius: 5px; overflow: hidden; }
+        img, video { width: 100%; height: 180px; object-fit: cover; }
     </style>
 </head>
 <body>
-    <div id="pexels-search-container">
+    <div id="search-container">
         <select id="mediaType">
             <option value="photos">صور</option>
             <option value="videos">فيديوهات</option>
         </select>
-        <input id="searchInput" placeholder="ابحث عن صور أو فيديوهات..." type="text">
-        <button id="searchButton">بحث</button>
+        <input id="searchInput" placeholder="ابحث هنا...">
+        <button id="searchBtn">بحث</button>
         
-        <div id="pexels-results"></div>
-        
-        <div id="loadMoreContainer">
-            <button id="loadMoreButton">تحميل المزيد</button>
-        </div>
+        <div id="results"></div>
+        <button id="loadMore" style="display: none;">تحميل المزيد</button>
     </div>
+
 
     <script>
         const API_ENDPOINT = window.location.origin + '/search';
