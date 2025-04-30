@@ -1,7 +1,7 @@
 import os
 from flask import Flask, render_template, request, jsonify
 import requests
-from urllib.parse import quote  # استبدلنا استيراد werkzeug بـ urllib
+from urllib.parse import quote  # استيراد آمن من المكتبة القياسية
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -26,19 +26,21 @@ def search():
         if not query:
             return jsonify({'error': 'Query is required'}), 400
         
-        # Build API URL using urllib's quote
-        if media_type == 'photos':
-            api_url = f"https://api.pexels.com/v1/search?query={quote(query)}&per_page=12&page={page}"
-        else:
-            api_url = f"https://api.pexels.com/videos/search?query={quote(query)}&per_page=6&page={page}"
+        # استخدام urllib.parse.quote بدلاً من werkzeug
+        encoded_query = quote(query)
         
-        # Make request to Pexels API
+        if media_type == 'photos':
+            api_url = f"https://api.pexels.com/v1/search?query={encoded_query}&per_page=12&page={page}"
+        else:
+            api_url = f"https://api.pexels.com/videos/search?query={encoded_query}&per_page=6&page={page}"
+        
         response = requests.get(api_url, headers={'Authorization': PEXELS_API_KEY})
         response.raise_for_status()
+        
+        # معالجة النتائج
+        results = []
         data = response.json()
         
-        # Format results
-        results = []
         if media_type == "photos":
             results = [{
                 'type': 'photo',
