@@ -1,13 +1,12 @@
 import os
 from flask import Flask, render_template, request, jsonify
 import requests
-from werkzeug.utils import quote as url_quote  # استبدال الاستيراد المعطوب
+from werkzeug.utils import quote as url_quote
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-
-# تهيئة متغيرات البيئة
-from dotenv import load_dotenv
-load_dotenv()
 
 # Pexels API key from environment variables
 PEXELS_API_KEY = os.getenv('PEXELS_API_KEY')
@@ -54,7 +53,7 @@ def search():
                     (f['link'] for f in video['video_files'] 
                     if f['quality'] == 'sd' and f['file_type'] == 'video/mp4'),
                     video['video_files'][0]['link']
-                )) 
+                )
             } for video in data.get('videos', [])]
         
         return jsonify({
