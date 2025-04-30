@@ -50,8 +50,9 @@ def search():
                 'type': 'video',
                 'src': next(
                     (f['link'] for f in video['video_files'] 
-                    if f['quality'] == 'sd' and f['file_type'] == 'video/mp4'
-                ) or video['video_files'][0]['link']
+                    if f['quality'] == 'sd' and f['file_type'] == 'video/mp4'),
+                    video['video_files'][0]['link']
+                )
             } for video in data.get('videos', [])]
         
         return jsonify({
