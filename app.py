@@ -1,43 +1,74 @@
 import os
 from flask import Flask, render_template, request, jsonify
 import requests
-from urllib.parse import quote  # بديل آمن ومضمون
+from urllib.parse import quote  # استيراد من مكتبة بايثون القياسية
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
 
-# تكوين Pexels API
+# Pexels API key
 PEXELS_API_KEY = os.getenv('PEXELS_API_KEY')
 
 @app.route('/')
-def home():
+def index():
     return render_template('index.html')
 
 @app.route('/search', methods=['POST'])
 def search():
     try:
         data = request.get_json()
+        media_type = data.get('mediaType', 'photos')
         query = data.get('query', '').strip()
+        page = data.get('page', 1)
+        
         if not query:
-            return jsonify({'error': 'يجب إدخال كلمة بحث'}), 400
-
-        # بناء الرابط باستخدام urllib
-        api_url = f"https://api.pexels.com/v1/search?query={quote(query)}&per_page=15"
+            return jsonify({'error': 'Query is required'}), 400
+        
+        # Build URL with safe encoding
+        encoded_query = quote(query)
+        
+        if media_type == 'photos':
+            api_url = f"https://api.pexels.com/v1/search?query={encoded_query}&per_page=12&page={page}"
+        else:
+            api_url = f"https://api.pexels.com/videos/search?query={encoded_query}&per_page=6&page={page}"
         
         response = requests.get(api_url, headers={'Authorization': PEXELS_API_KEY})
         response.raise_for_status()
         
-        return jsonify({
-            'results': [{
+        # Process results
+        results = []
+        data = response.json()
+        
+        if media_type == "photos":
+            results = [{
+                'type': 'photo',
                 'src': photo['src']['medium'],
-                'original': photo['src']['original']
-            } for photo in response.json().get('photos', [])]
+                'original': photo['src']['original'],
+                'alt': photo.get('alt', 'Image')
+            } for photo in data.get('photos', [])]
+        else:
+            results = [{
+                'type': 'video',
+                'src': next(
+                    (f['link'] for f in video['video_files'] 
+                    if f['quality'] == 'sd' and f['file_type'] == 'video/mp4'),
+                    video['video_files'][0]['link']
+                )
+            } for video in data.get('videos', [])]
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'has_more': len(results) > 0
         })
-
+        
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
