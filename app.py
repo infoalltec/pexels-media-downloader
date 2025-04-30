@@ -1,43 +1,70 @@
 import os
+from flask import Flask, render_template, request, jsonify
 import requests
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
 
-PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
+# Pexels API key from environment variables
+PEXELS_API_KEY = os.getenv('PEXELS_API_KEY')
 
-def clean_query(query):
-    # إزالة الرموز غير المرغوب فيها مثل النقاط والفواصل
-    return ''.join(e for e in query if e.isalnum() or e.isspace())
+@app.route('/')
+def home():
+    return render_template('index.html')
 
-def search_pexels_with_type(media_type):
-    query = request.args.get("query", "").strip()
-    page = int(request.args.get("page", 1))
+@app.route('/search', methods=['POST'])
+def search():
+    try:
+        data = request.json
+        media_type = data.get('mediaType', 'photos')
+        query = data.get('query', '').strip()
+        page = data.get('page', 1)
+        
+        if not query:
+            return jsonify({'error': 'Query is required'}), 400
+        
+        # Build API URL based on media type
+        if media_type == 'photos':
+            api_url = f"https://api.pexels.com/v1/search?query={query}&per_page=12&page={page}"
+        else:
+            api_url = f"https://api.pexels.com/videos/search?query={query}&per_page=6&page={page}"
+        
+        # Make request to Pexels API
+        response = requests.get(api_url, headers={'Authorization': PEXELS_API_KEY})
+        response.raise_for_status()
+        data = response.json()
+        
+        # Format results
+        results = []
+        if media_type == "photos":
+            results = [{
+                'type': 'photo',
+                'src': photo['src']['medium'],
+                'original': photo['src']['original'],
+                'alt': photo.get('alt', 'صورة')
+            } for photo in data.get('photos', [])]
+        else:
+            results = [{
+                'type': 'video',
+                'src': next(
+                    (f['link'] for f in video['video_files'] 
+                    if f['quality'] == 'sd' and f['file_type'] == 'video/mp4'
+                ) or video['video_files'][0]['link']
+            } for video in data.get('videos', [])]
+        
+        return jsonify({
+            'success': True,
+            'results': results,
+            'has_more': len(results) > 0
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
-    if not query:
-        return jsonify({"error": "Missing query"}), 400
-    
-    # تنظيف الاستعلام
-    query = clean_query(query)
-
-    url = f"https://api.pexels.com/v1/{'videos/' if media_type == 'videos' else ''}search?query={query}&per_page={5 if media_type == 'videos' else 10}&page={page}"
-    headers = {"Authorization": PEXELS_API_KEY}
-    res = requests.get(url, headers=headers)
-
-    if res.status_code != 200:
-        return jsonify({"error": "Failed to fetch from Pexels"}), 500
-    
-    return jsonify(res.json())
-
-@app.route("/api/photos", methods=["GET"])
-def search_photos():
-    return search_pexels_with_type("photos")
-
-@app.route("/api/videos", methods=["GET"])
-def search_videos():
-    return search_pexels_with_type("videos")
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     app.run(debug=True)
