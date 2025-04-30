@@ -19,45 +19,41 @@ def search():
     try:
         data = request.get_json()
         query = data.get('query', '').strip()
-        media_type = data.get('mediaType', 'photos').strip()
+        media_type = data.get('mediaType', 'photos')  # يمكن photos أو videos
         page = int(data.get('page', 1))
 
         if not query:
-            return jsonify({'success': False, 'error': 'أدخل كلمة بحث'}), 400
+            return jsonify({'error': 'أدخل كلمة بحث'}), 400
 
         encoded_query = quote(query)
-        url = f"https://api.pexels.com/v1/{media_type}?query={encoded_query}&per_page=15&page={page}"
+        per_page = 15
+        url = f"https://api.pexels.com/v1/{media_type}?query={encoded_query}&per_page={per_page}&page={page}"
+        
+        res = requests.get(url, headers={'Authorization': PEXELS_API_KEY})
+        res.raise_for_status()
 
-        response = requests.get(url, headers={"Authorization": PEXELS_API_KEY})
-        response.raise_for_status()
-        data = response.json()
-
-        results = []
-        if media_type == "photos":
-            for item in data.get('photos', []):
-                results.append({
-                    'type': 'photo',
-                    'src': item['src']['medium'],
-                    'original': item['src']['original'],
-                    'alt': item.get('alt', '')
-                })
-        elif media_type == "videos":
-            for item in data.get('videos', []):
-                video_url = item['video_files'][0]['link'] if item['video_files'] else ''
-                results.append({
-                    'type': 'video',
-                    'src': video_url,
-                    'original': item['url']
-                })
+        if media_type == "videos":
+            items = [{
+                'type': 'video',
+                'src': v['video_files'][0]['link'],
+                'original': v['url'],
+                'alt': v['user']['name']
+            } for v in res.json().get('videos', [])]
+        else:
+            items = [{
+                'type': 'photo',
+                'src': p['src']['medium'],
+                'original': p['src']['original'],
+                'alt': p['alt']
+            } for p in res.json().get('photos', [])]
 
         return jsonify({
             'success': True,
-            'results': results,
-            'has_more': data.get('next_page') is not None
+            'results': items,
+            'has_more': len(items) == per_page
         })
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
-
 if __name__ == '__main__':
     app.run()
