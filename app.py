@@ -16,18 +16,15 @@ def translate_to_english(text):
     except:
         return text
 
-@app.route("/api/search", methods=["GET"])
-def search_pexels():
+def search_pexels_with_type(media_type):
     query = request.args.get("query", "").strip()
-    media_type = request.args.get("media_type", "photos")
     page = int(request.args.get("page", 1))
 
-    if not query or media_type not in ["photos", "videos"]:
-        return jsonify({"error": "Invalid parameters"}), 400
+    if not query:
+        return jsonify({"error": "Missing query"}), 400
 
     translated_query = translate_to_english(query)
     url = f"https://api.pexels.com/v1/{'videos/' if media_type == 'videos' else ''}search?query={translated_query}&per_page={5 if media_type == 'videos' else 10}&page={page}"
-
     headers = {"Authorization": PEXELS_API_KEY}
     res = requests.get(url, headers=headers)
 
@@ -35,6 +32,14 @@ def search_pexels():
         return jsonify({"error": "Failed to fetch from Pexels"}), 500
 
     return jsonify(res.json())
+
+@app.route("/api/photos", methods=["GET"])
+def search_photos():
+    return search_pexels_with_type("photos")
+
+@app.route("/api/videos", methods=["GET"])
+def search_videos():
+    return search_pexels_with_type("videos")
 
 if __name__ == "__main__":
     app.run(debug=True)
